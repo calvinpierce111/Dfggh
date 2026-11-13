@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#171a21" />
+<title>AI Ассистент</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11/lib/highlight.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11/styles/github-dark.min.css" />
+<style>
+  :root{--bg:#0f1115;--panel:#171a21;--panel2:#1e222b;--border:#2a2f3a;--text:#e6e8ee;--muted:#8b93a3;--accent:#6c8cff;--user:#243044;--safe-t:env(safe-area-inset-top,0px);--safe-b:env(safe-area-inset-bottom,0px)}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0}
+  body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column;height:100dvh;overflow:hidden;overscroll-behavior:none}
+  header{padding:calc(8px + var(--safe-t)) 8px 8px;background:var(--panel);border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center;flex:0 0 auto}
+  header h1{font-size:15px;margin:0 4px 0 8px;white-space:nowrap;flex:1;overflow:hidden;text-overflow:ellipsis}
+  .icon-btn{width:40px;height:40px;flex:0 0 40px;display:grid;place-items:center;background:var(--panel2);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:18px;cursor:pointer}
+  #chat{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 12px;display:flex;flex-direction:column;gap:10px}
+  .msg{max-width:88%;padding:11px 13px;border-radius:16px;line-height:1.45;font-size:15px;overflow-wrap:anywhere}
+  .user{align-self:flex-end;background:var(--user);border:1px solid #33405c;border-bottom-right-radius:6px;white-space:pre-wrap}
+  .assistant{align-self:flex-start;background:var(--panel2);border:1px solid var(--border);border-bottom-left-radius:6px}
+  .assistant .md p{margin:0 0 8px}.assistant .md p:last-child{margin:0}
+  .assistant .md pre{background:#0b0d12;border:1px solid #2a2f3a;border-radius:10px;padding:10px;overflow-x:auto;margin:8px 0;position:relative}
+  .assistant .md code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;background:#0b0d12;padding:1px 5px;border-radius:4px}
+  .assistant .md pre code{background:none;padding:0;display:block}
+  .assistant .md .copy-code{position:absolute;top:6px;right:6px;font-size:11px;background:#1e222b;color:var(--muted);border:1px solid #2a2f3a;border-radius:6px;padding:3px 7px;cursor:pointer}
+  .meta{font-size:11px;color:var(--muted);margin-top:5px}
+  .error{align-self:center;background:#3a1d22;border:1px solid #6b2a33;color:#ffb4bd;font-size:13px;max-width:100%}
+  .typing::after{content:"▍";animation:blink 1s steps(1) infinite;color:var(--accent)}
+  @keyframes blink{50%{opacity:0}}
+  footer{flex:0 0 auto;display:flex;gap:8px;align-items:flex-end;padding:8px 8px calc(8px + var(--safe-b));background:var(--panel);border-top:1px solid var(--border)}
+  #input{flex:1;resize:none;min-height:44px;max-height:140px;padding:11px 14px;font:inherit;font-size:16px;color:var(--text);background:var(--panel2);border:1px solid var(--border);border-radius:22px;line-height:1.35}
+  #input:focus{outline:none;border-color:var(--accent)}
+  #send{width:46px;height:46px;flex:0 0 46px;border-radius:50%;border:0;background:var(--accent);color:#fff;font-size:20px;display:grid;place-items:center;cursor:pointer}
+  #send:disabled{opacity:.45}
+  .backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .2s;z-index:40}
+  .sheet{position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--panel);border-top:1px solid var(--border);border-radius:18px 18px 0 0;padding:14px 16px calc(16px + var(--safe-b));transform:translateY(110%);transition:transform .25s ease;max-height:85dvh;overflow-y:auto}
+  .backdrop.open{opacity:1;pointer-events:auto}
+  .sheet.open{transform:translateY(0)}
+  .grab{width:40px;height:4px;border-radius:2px;background:#3a4150;margin:0 auto 14px}
+  .sheet h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 8px}
+  .sheet .row{margin-bottom:16px}
+  .sheet label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+  .key-wrap{display:flex;gap:8px}.key-wrap input{flex:1}
+  .sheet input[type=password],.sheet input[type=text],.sheet select{width:100%;padding:12px;font:inherit;font-size:16px;color:var(--text);background:var(--panel2);border:1px solid var(--border);border-radius:10px}
+  .sheet input:focus,.sheet select:focus{outline:none;border-color:var(--accent)}
+  .btn{padding:12px 14px;font:inherit;font-size:15px;cursor:pointer;background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:10px}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.danger{color:#ffb4bd;border-color:#5a2a33}
+  .note{font-size:12px;color:var(--muted);line-height:1.4;margin-top:6px}
+  #modelSearch{margin-bottom:8px}
+  #modelList{max-height:220px;overflow-y:auto;border:1px solid var(--border);border-radius:10px;background:var(--panel2)}
+  .model-item{padding:11px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-size:14px;display:flex;justify-content:space-between;gap:8px}
+  .model-item:last-child{border-bottom:0}
+  .model-item.selected{background:#28303d}
+  .model-item .price{font-size:11px;color:var(--muted);white-space:nowrap}
+  @media(min-width:700px){#chat{padding:20px 15%}.msg{max-width:75%}}
+</style>
+</head>
+<body>
+<header>
+  <h1>AI Ассистент</h1>
+  <button class="icon-btn" id="openSettings" aria-label="Настройки">⚙</button>
+</header>
+<div id="chat"></div>
+<footer>
+  <textarea id="input" placeholder="Сообщение…" rows="1" enterkeyhint="send"></textarea>
+  <button id="mic" class="icon-btn" style="border-radius:50%" aria-label="Голосовой ввод">🎤</button>
+  <button id="send" aria-label="Отправить">➤</button>
+</footer>
+<div class="backdrop" id="backdrop"></div>
+<section class="sheet" id="sheet" role="dialog" aria-label="Настройки">
+  <div class="grab"></div>
+  <div class="row">
+    <label for="key">Ключ OpenRouter</label>
+    <div class="key-wrap">
+      <input id="key" type="password" placeholder="sk-or-v1-..." autocomplete="off" spellcheck="false" />
+      <button class="btn" id="toggleKey" type="button">👁</button>
+    </div>
+    <div class="note">Ключ хранится только в этом браузере.</div>
+  </div>
+  <div class="row">
+    <label>Модель</label>
+    <input id="modelSearch" type="text" placeholder="Поиск модели…" autocomplete="off" />
+    <div id="modelList"></div>
+    <div class="note" id="modelNote">Загрузка списка моделей…</div>
+  </div>
+  <div class="row" style="display:flex;gap:8px">
+    <button class="btn danger" id="clear" style="flex:1">Очистить чат</button>
+    <button class="btn primary" id="closeSettings" style="flex:1">Готово</button>
+  </div>
+</section>
+<script>
+const $=id=>document.getElementById(id);
+const chatEl=$('chat'),inputEl=$('input'),keyEl=$('key');
+const sheet=$('sheet'),backdrop=$('backdrop');
+const modelListEl=$('modelList'),modelSearchEl=$('modelSearch'),modelNoteEl=$('modelNote');
+const SYS_PROMPT="Ты полезный AI-ассистент. Отвечай на языке пользователя, кратко и по делу. Форматируй ответ в Markdown.";
+const STORAGE_CHAT='or_chat_history',STORAGE_KEY='or_key',STORAGE_MODEL='or_model';
+let history=[],busy=false,allModels=[],selectedModel='',recognition=null;
+marked.setOptions({breaks:true,gfm:true});
+function renderMarkdown(text){
+  const raw=marked.parse(text);
+  const clean=DOMPurify.sanitize(raw,{ADD_ATTR:['target']});
+  const div=document.createElement('div');div.innerHTML=clean;
+  div.querySelectorAll('pre code').forEach(block=>{
+    try{hljs.highlightElement(block);}catch(e){}
+    const pre=block.parentElement;
+    if(!pre.querySelector('.copy-code')){
+      const btn=document.createElement('button');btn.className='copy-code';btn.textContent='копировать';
+      btn.onclick=()=>{navigator.clipboard.writeText(block.textContent).then(()=>{btn.textContent='✓';setTimeout(()=>btn.textContent='копировать',1200);});};
+      pre.appendChild(btn);
+    }
+  });
+  div.querySelectorAll('a').forEach(a=>{a.target='_blank';a.rel='noopener';});
+  return div.innerHTML;
+}
+function saveHistory(){try{localStorage.setItem(STORAGE_CHAT,JSON.stringify(history));}catch(e){}}
+function loadHistory(){
+  try{history=JSON.parse(localStorage.getItem(STORAGE_CHAT)||'[]');}catch(e){history=[];}
+  chatEl.innerHTML='';history.forEach(m=>addMsg(m.role,m.content,false));
+}
+function addMsg(role,text,store=true){
+  const d=document.createElement('div');d.className='msg '+role;
+  if(role==='assistant'){d.innerHTML='<div class="md">'+renderMarkdown(text)+'</div>';}
+  else if(role==='user'){d.textContent=text;}
+  else{d.textContent='⚠ '+text;}
+  chatEl.appendChild(d);chatEl.scrollTop=chatEl.scrollHeight;return d;
+}
+function addError(text){addMsg('error',text,false);}
+function loadSettings(){
+  keyEl.value=localStorage.getItem(STORAGE_KEY)||'';
+  selectedModel=localStorage.getItem(STORAGE_MODEL)||'';
+}
+const saveKey=()=>localStorage.setItem(STORAGE_KEY,keyEl.value.trim());
+keyEl.addEventListener('change',saveKey);keyEl.addEventListener('blur',saveKey);
+$('toggleKey').addEventListener('click',()=>{
+  const show=keyEl.type==='password';keyEl.type=show?'text':'password';$('toggleKey').textContent=show?'🙈':'👁';
+});
+async function fetchModels(){
+  try{
+    const res=await fetch('https://openrouter.ai/api/v1/models');
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const json=await res.json();
+    allModels=(json.data||[]).map(m=>({id:m.id,name:m.name||m.id,promptPrice:m.pricing?.prompt,completionPrice:m.pricing?.completion}));
+    renderModelList();
+    if(!selectedModel&&allModels.length){
+      const preferred=allModels.find(m=>m.id.includes('claude-sonnet'))||allModels[0];
+      selectModel(preferred.id);
+    }else if(selectedModel){renderModelList();}
+  }catch(e){modelNoteEl.textContent='Не удалось загрузить список моделей: '+e.message;}
+}
+function priceLabel(m){
+  const p=parseFloat(m.promptPrice),c=parseFloat(m.completionPrice);
+  if(isNaN(p)||isNaN(c))return '';
+  if(p===0&&c===0)return 'free';
+  return `$${(p*1e6).toFixed(2)}/$${(c*1e6).toFixed(2)}`;
+}
+function renderModelList(){
+  const q=modelSearchEl.value.trim().toLowerCase();
+  const filtered=q?allModels.filter(m=>m.id.toLowerCase().includes(q)||m.name.toLowerCase().includes(q)):allModels;
+  modelListEl.innerHTML='';
+  filtered.slice(0,200).forEach(m=>{
+    const div=document.createElement('div');
+    div.className='model-item'+(m.id===selectedModel?' selected':'');
+    div.innerHTML=`<span>${m.name}</span><span class="price">${priceLabel(m)}</span>`;
+    div.onclick=()=>selectModel(m.id);
+    modelListEl.appendChild(div);
+  });
+  modelNoteEl.textContent=filtered.length?`${filtered.length} моделей${q?' по запросу':''}`:'Ничего не найдено';
+}
+function selectModel(id){
+  selectedModel=id;localStorage.setItem(STORAGE_MODEL,id);renderModelList();
+  const m=allModels.find(x=>x.id===id);
+  modelNoteEl.textContent='Выбрано: '+(m?m.name:id);
+}
+modelSearchEl.addEventListener('input',renderModelList);
+function openSheet(){sheet.classList.add('open');backdrop.classList.add('open');}
+function closeSheet(){sheet.classList.remove('open');backdrop.classList.remove('open');}
+$('openSettings').addEventListener('click',openSheet);
+$('closeSettings').addEventListener('click',closeSheet);
+backdrop.addEventListener('click',closeSheet);
+const SpeechRec=window.SpeechRecognition||window.webkitSpeechRecognition;
+if(!SpeechRec){$('mic').style.display='none';}
+else{
+  $('mic').addEventListener('click',()=>{
+    if(recognition){recognition.stop();recognition=null;$('mic').textContent='🎤';return;}
+    recognition=new SpeechRec();recognition.lang='ru-RU';recognition.interimResults=false;
+    recognition.onresult=e=>{const text=Array.from(e.results).map(r=>r[0].transcript).join(' ');inputEl.value=(inputEl.value+' '+text).trim();autoGrow();inputEl.focus();};
+    recognition.onerror=()=>{$('mic').textContent='🎤';recognition=null;};
+    recognition.onend=()=>{$('mic').textContent='🎤';recognition=null;};
+    recognition.start();$('mic').textContent='⏹';
+  });
+}
+if('speechSynthesis' in window){
+  chatEl.addEventListener('click',e=>{
+    const bubble=e.target.closest('.assistant');
+    if(!bubble||e.target.closest('.copy-code')||e.target.closest('a'))return;
+    const text=bubble.innerText.trim();if(!text)return;
+    if(speechSynthesis.speaking){speechSynthesis.cancel();return;}
+    const u=new SpeechSynthesisUtterance(text);u.lang='ru-RU';speechSynthesis.speak(u);
+  });
+}
+async function send(){
+  if(busy)return;
+  const text=inputEl.value.trim();if(!text)return;
+  const key=keyEl.value.trim();
+  if(!key){addError('Вставьте ключ OpenRouter в настройках (⚙).');openSheet();keyEl.focus();return;}
+  saveKey();
+  if(!selectedModel){addError('Выберите модель в настройках.');openSheet();return;}
+  inputEl.value='';autoGrow();addMsg('user',text);history.push({role:'user',content:text});saveHistory();
+  busy=true;$('send').disabled=true;
+  const bubble=addMsg('assistant','');bubble.classList.add('typing');
+  let full='',usage=null;
+  try{
+    const res=await fetch('https://openrouter.ai/api/v1/chat/completions',{
+      method:'POST',
+      headers:{'Authorization':'Bearer '+key,'Content-Type':'application/json','HTTP-Referer':location.origin||'http://localhost','X-Title':'AI Assistant Online'},
+      body:JSON.stringify({model:selectedModel,stream:true,messages:[{role:'system',content:SYS_PROMPT},...history]})
+    });
+    if(!res.ok||!res.body){const err=await res.text().catch(()=> '');throw new Error(`HTTP ${res.status}: ${err.slice(0,300)}`);}
+    const reader=res.body.getReader();const dec=new TextDecoder();let buf='';
+    while(true){
+      const{value,done}=await reader.read();if(done)break;
+      buf+=dec.decode(value,{stream:true});const lines=buf.split('\n');buf=lines.pop();
+      for(const line of lines){
+        const s=line.trim();if(!s.startsWith('data:'))continue;
+        const data=s.slice(5).trim();if(data==='[DONE]')continue;
+        try{
+          const j=JSON.parse(data);
+          if(j.error)throw new Error(j.error.message||'Ошибка API');
+          const delta=j.choices?.[0]?.delta?.content;
+          if(delta){full+=delta;bubble.innerHTML='<div class="md">'+renderMarkdown(full)+'</div>';chatEl.scrollTop=chatEl.scrollHeight;}
+          if(j.usage)usage=j.usage;
+        }catch(e){if(e.message&&!e.message.includes('Unexpected'))throw e;}
+      }
+    }
+    bubble.classList.remove('typing');
+    if(!full){bubble.innerHTML='<div class="md">(пустой ответ)</div>';}
+    else{
+      history.push({role:'assistant',content:full});saveHistory();
+      if(usage){
+        const meta=document.createElement('div');meta.className='meta';
+        meta.textContent=`токены: ${usage.prompt_tokens||'?'} → ${usage.completion_tokens||'?'}`+(usage.cost?` · $${Number(usage.cost).toFixed(5)}`:'');
+        bubble.appendChild(meta);
+      }
+    }
+  }catch(e){
+    bubble.remove();history.pop();saveHistory();addError(e.message||'Неизвестная ошибка');
+  }finally{busy=false;$('send').disabled=false;}
+}
+$('send').addEventListener('click',send);
+$('clear').addEventListener('click',()=>{history=[];chatEl.innerHTML='';saveHistory();closeSheet();});
+inputEl.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){e.preventDefault();send();}});
+function autoGrow(){inputEl.style.height='auto';inputEl.style.height=Math.min(inputEl.scrollHeight,140)+'px';}
+inputEl.addEventListener('input',autoGrow);
+if(window.visualViewport){window.visualViewport.addEventListener('resize',()=>{chatEl.scrollTop=chatEl.scrollHeight;});}
+loadSettings();loadHistory();fetchModels();
+</script>
+</body>
+</html>
